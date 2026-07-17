@@ -101,7 +101,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.scroll = ft.ScrollMode.AUTO
-    page.padding = 15
+    page.padding = 10
 
     # Inicializa BD
     inicializar_banco()
@@ -121,7 +121,7 @@ def main(page: ft.Page):
     txt_data = ft.Text(obter_agora_br().strftime("%d/%m/%Y"), size=16, color=ft.Colors.GREEN_ACCENT)
     
     cabecalho = ft.Column([
-        ft.Text("Treino Vocal Master", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, text_align=ft.TextAlign.CENTER),
+        ft.Text("Treino Vocal Master", size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, text_align=ft.TextAlign.CENTER),
         ft.Row([txt_ofensiva, txt_data], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
     ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
@@ -175,7 +175,7 @@ def main(page: ft.Page):
     # -----------------------------------------------------------------------
     # ABA 1: ROTINA VOCAL
     # -----------------------------------------------------------------------
-    conteudo_rotina = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=25)
+    conteudo_rotina = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20)
 
     NomesFases = {
         1: "FASE 1: O Pocket Routine (Deitado na Cama)",
@@ -186,12 +186,10 @@ def main(page: ft.Page):
 
     def alternar_check(e, id_tarefa, container):
         marcado = e.control.value
-        # Atualização visual imediata
         container.bgcolor = ft.Colors.GREEN_900 if marcado else ft.Colors.GREY_900
         container.border = ft.Border.all(1, ft.Colors.GREEN_700 if marcado else ft.Colors.GREY_800)
         container.update()
 
-        # Salva no banco e recalcula %
         def trabalho():
             con = conectar_banco()
             cur = con.cursor()
@@ -230,10 +228,10 @@ def main(page: ft.Page):
     def abrir_modal_tarefa(id_tarefa, fase, n="", pq="", cf="", ex=""):
         titulo = "Editar Tarefa" if id_tarefa > 0 else f"Nova Tarefa - Fase {fase}"
         
-        c_nome = ft.TextField(label="Nome / Título", value=n, max_width=400)
-        c_pq = ft.TextField(label="Para que serve?", value=pq, multiline=True, min_lines=2, max_width=400)
-        c_cf = ft.TextField(label="Como fazer?", value=cf, multiline=True, min_lines=2, max_width=400)
-        c_ex = ft.TextField(label="Exercício / Texto", value=ex, multiline=True, min_lines=3, max_width=400)
+        c_nome = ft.TextField(label="Nome / Título", value=n, width=300)
+        c_pq = ft.TextField(label="Para que serve?", value=pq, multiline=True, min_lines=2, width=300)
+        c_cf = ft.TextField(label="Como fazer?", value=cf, multiline=True, min_lines=2, width=300)
+        c_ex = ft.TextField(label="Exercício / Texto", value=ex, multiline=True, min_lines=3, width=300)
         
         dlg = ft.AlertDialog(
             title=ft.Text(titulo),
@@ -252,9 +250,9 @@ def main(page: ft.Page):
         page.update()
 
     def criar_card_tarefa(id_tarefa, nome, para_que, como_fazer, exercicio, ja_feito, fase):
-        # Container responsivo sem largura fixa para se moldar perfeitamente ao celular
+        # LARGURA FIXED EM 360 PARA EVITAR QUALQUER CORTE NO CELULAR
         container = ft.Container(
-            padding=15, border_radius=12, max_width=600, expand=True,
+            padding=12, border_radius=12, width=360,
             bgcolor=ft.Colors.GREEN_900 if ja_feito else ft.Colors.GREY_900,
             border=ft.Border.all(1, ft.Colors.GREEN_700 if ja_feito else ft.Colors.GREY_800)
         )
@@ -264,25 +262,24 @@ def main(page: ft.Page):
         btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
         btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=18, on_click=lambda e: deletar_tarefa(id_tarefa))
         
-        # Linha Superior Dinâmica: Checkbox + Título colados + Ações no canto direito
+        # O Checkbox colado, permitindo que o titulo se expanda e os botoes fiquem no canto sem dar erro de max_width
         linha_topo = ft.Row([
-            ft.Row([chk, ft.Text(nome, size=19, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, expand=True)], expand=True, spacing=2),
+            ft.Row([chk, ft.Text(nome, size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, expand=True)], spacing=0, expand=True),
             ft.Row([btn_edit, btn_del], spacing=0, tight=True)
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
         
-        # Conteúdo interno com fontes aumentadas (+1 ponto) e espaçamentos recalibrados
         col_textos = ft.Column([
             linha_topo,
-            ft.Container(height=2),
+            ft.Container(height=4),
             ft.Text(f"🎯 Para quê: {para_que}", size=15, color=ft.Colors.BLUE_200, italic=True) if para_que else ft.Container(),
-            ft.Container(height=6), # Aumentado o espaçamento entre o 'Para que' e o 'Como fazer'
+            ft.Container(height=10), # Espaçamento aumentado conforme solicitado!
             ft.Text(f"🛠️ Como fazer: {como_fazer}", size=15, color=ft.Colors.GREY_400) if como_fazer else ft.Container(),
-            ft.Container(height=8),
+            ft.Container(height=10),
             ft.Container(
-                content=ft.Text(exercicio, size=17, weight=ft.FontWeight.W_500, color=ft.Colors.WHITE),
-                bgcolor=ft.Colors.BLACK45, padding=12, border_radius=8, expand=True
+                content=ft.Text(exercicio, size=16, weight=ft.FontWeight.W_500, color=ft.Colors.WHITE),
+                bgcolor=ft.Colors.BLACK45, padding=10, border_radius=8
             )
-        ], spacing=4)
+        ], spacing=2)
 
         container.content = col_textos
         return container
@@ -308,7 +305,7 @@ def main(page: ft.Page):
             fases_dict[t[1]].append(t)
             
         for fase_num, lista in fases_dict.items():
-            titulo_fase = ft.Text(NomesFases[fase_num], size=22, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT, text_align=ft.TextAlign.CENTER)
+            titulo_fase = ft.Text(NomesFases[fase_num], size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT, text_align=ft.TextAlign.CENTER)
             conteudo_rotina.controls.append(titulo_fase)
             
             for (id_tarefa, f, nome, pq, cf, ex) in lista:
@@ -318,11 +315,11 @@ def main(page: ft.Page):
             # Botão de adicionar específico para o final do bloco
             btn_add = ft.FilledButton(
                 f"+ Adicionar na Fase {fase_num}", 
-                icon=ft.Icons.ADD, bgcolor=ft.Colors.GREY_800, color=ft.Colors.WHITE,
+                icon=ft.Icons.ADD, bgcolor=ft.Colors.GREY_800, color=ft.Colors.WHITE, width=360,
                 on_click=lambda e, f=fase_num: abrir_modal_tarefa(0, f)
             )
             conteudo_rotina.controls.append(btn_add)
-            conteudo_rotina.controls.append(ft.Divider(height=30, thickness=2, color=ft.Colors.GREY_800))
+            conteudo_rotina.controls.append(ft.Divider(height=25, thickness=2, color=ft.Colors.GREY_800))
             
         calcular_gamificacao()
         page.update()
