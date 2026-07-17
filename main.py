@@ -101,7 +101,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.scroll = ft.ScrollMode.AUTO
-    page.padding = 20
+    page.padding = 15
 
     # Inicializa BD
     inicializar_banco()
@@ -121,7 +121,7 @@ def main(page: ft.Page):
     txt_data = ft.Text(obter_agora_br().strftime("%d/%m/%Y"), size=16, color=ft.Colors.GREEN_ACCENT)
     
     cabecalho = ft.Column([
-        ft.Text("Treino Vocal Master", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+        ft.Text("Treino Vocal Master", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, text_align=ft.TextAlign.CENTER),
         ft.Row([txt_ofensiva, txt_data], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
     ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
@@ -175,7 +175,7 @@ def main(page: ft.Page):
     # -----------------------------------------------------------------------
     # ABA 1: ROTINA VOCAL
     # -----------------------------------------------------------------------
-    conteudo_rotina = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=30)
+    conteudo_rotina = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=25)
 
     NomesFases = {
         1: "FASE 1: O Pocket Routine (Deitado na Cama)",
@@ -230,10 +230,10 @@ def main(page: ft.Page):
     def abrir_modal_tarefa(id_tarefa, fase, n="", pq="", cf="", ex=""):
         titulo = "Editar Tarefa" if id_tarefa > 0 else f"Nova Tarefa - Fase {fase}"
         
-        c_nome = ft.TextField(label="Nome / Título", value=n, width=400)
-        c_pq = ft.TextField(label="Para que serve?", value=pq, multiline=True, min_lines=2, width=400)
-        c_cf = ft.TextField(label="Como fazer?", value=cf, multiline=True, min_lines=2, width=400)
-        c_ex = ft.TextField(label="Exercício / Texto", value=ex, multiline=True, min_lines=3, width=400)
+        c_nome = ft.TextField(label="Nome / Título", value=n, max_width=400)
+        c_pq = ft.TextField(label="Para que serve?", value=pq, multiline=True, min_lines=2, max_width=400)
+        c_cf = ft.TextField(label="Como fazer?", value=cf, multiline=True, min_lines=2, max_width=400)
+        c_ex = ft.TextField(label="Exercício / Texto", value=ex, multiline=True, min_lines=3, max_width=400)
         
         dlg = ft.AlertDialog(
             title=ft.Text(titulo),
@@ -252,36 +252,39 @@ def main(page: ft.Page):
         page.update()
 
     def criar_card_tarefa(id_tarefa, nome, para_que, como_fazer, exercicio, ja_feito, fase):
+        # Container responsivo sem largura fixa para se moldar perfeitamente ao celular
         container = ft.Container(
-            padding=15, border_radius=12, width=600,
+            padding=15, border_radius=12, max_width=600, expand=True,
             bgcolor=ft.Colors.GREEN_900 if ja_feito else ft.Colors.GREY_900,
             border=ft.Border.all(1, ft.Colors.GREEN_700 if ja_feito else ft.Colors.GREY_800)
         )
         
         chk = ft.Checkbox(value=ja_feito, fill_color=ft.Colors.GREEN_600, on_change=lambda e: alternar_check(e, id_tarefa, container))
         
-        # Textos formatados para leitura agradável
+        btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
+        btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=18, on_click=lambda e: deletar_tarefa(id_tarefa))
+        
+        # Linha Superior Dinâmica: Checkbox + Título colados + Ações no canto direito
+        linha_topo = ft.Row([
+            ft.Row([chk, ft.Text(nome, size=19, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, expand=True)], expand=True, spacing=2),
+            ft.Row([btn_edit, btn_del], spacing=0, tight=True)
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+        
+        # Conteúdo interno com fontes aumentadas (+1 ponto) e espaçamentos recalibrados
         col_textos = ft.Column([
-            ft.Text(nome, size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-            ft.Text(f"🎯 Para quê: {para_que}", size=14, color=ft.Colors.BLUE_200, italic=True) if para_que else ft.Container(),
-            ft.Text(f"🛠️ Como fazer: {como_fazer}", size=14, color=ft.Colors.GREY_400) if como_fazer else ft.Container(),
+            linha_topo,
+            ft.Container(height=2),
+            ft.Text(f"🎯 Para quê: {para_que}", size=15, color=ft.Colors.BLUE_200, italic=True) if para_que else ft.Container(),
+            ft.Container(height=6), # Aumentado o espaçamento entre o 'Para que' e o 'Como fazer'
+            ft.Text(f"🛠️ Como fazer: {como_fazer}", size=15, color=ft.Colors.GREY_400) if como_fazer else ft.Container(),
+            ft.Container(height=8),
             ft.Container(
-                content=ft.Text(exercicio, size=16, weight=ft.FontWeight.W_500, color=ft.Colors.WHITE),
-                bgcolor=ft.Colors.BLACK45, padding=10, border_radius=8, width=540
+                content=ft.Text(exercicio, size=17, weight=ft.FontWeight.W_500, color=ft.Colors.WHITE),
+                bgcolor=ft.Colors.BLACK45, padding=12, border_radius=8, expand=True
             )
-        ], spacing=5, width=480)
+        ], spacing=4)
 
-        btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
-        btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, on_click=lambda e: deletar_tarefa(id_tarefa))
-        
-        acoes = ft.Column([btn_edit, btn_del], spacing=0, tight=True)
-        
-        container.content = ft.Row([
-            ft.Column([chk], alignment=ft.MainAxisAlignment.START),
-            col_textos, 
-            acoes
-        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.START)
-        
+        container.content = col_textos
         return container
 
     def carregar_ui_rotina():
@@ -305,7 +308,7 @@ def main(page: ft.Page):
             fases_dict[t[1]].append(t)
             
         for fase_num, lista in fases_dict.items():
-            titulo_fase = ft.Text(NomesFases[fase_num], size=22, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT)
+            titulo_fase = ft.Text(NomesFases[fase_num], size=22, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT, text_align=ft.TextAlign.CENTER)
             conteudo_rotina.controls.append(titulo_fase)
             
             for (id_tarefa, f, nome, pq, cf, ex) in lista:
@@ -319,7 +322,7 @@ def main(page: ft.Page):
                 on_click=lambda e, f=fase_num: abrir_modal_tarefa(0, f)
             )
             conteudo_rotina.controls.append(btn_add)
-            conteudo_rotina.controls.append(ft.Divider(height=40, thickness=2, color=ft.Colors.GREY_800))
+            conteudo_rotina.controls.append(ft.Divider(height=30, thickness=2, color=ft.Colors.GREY_800))
             
         calcular_gamificacao()
         page.update()
@@ -357,7 +360,7 @@ def main(page: ft.Page):
     # Montagem Final da Tela
     page.add(
         cabecalho,
-        ft.Divider(height=30),
+        ft.Divider(height=20),
         linha_abas,
         ft.Container(height=10),
         conteudo_rotina,
