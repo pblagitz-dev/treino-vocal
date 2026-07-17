@@ -130,16 +130,24 @@ def main(page: ft.Page):
     # -----------------------------------------------------------------------
     conteudo_metas = ft.Column(visible=False, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     
-    anel_progresso = ft.ProgressRing(value=0, stroke_width=15, color=ft.Colors.GREEN_ACCENT_400, bgcolor=ft.Colors.GREY_900, width=180, height=180)
-    txt_porcentagem = ft.Text("0%", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT)
-    
-    card_anel = ft.Stack([
-        anel_progresso,
-        ft.Container(
-            content=ft.Column([txt_porcentagem], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-            width=180, height=180
+    linha_graficos = ft.Row(alignment=ft.MainAxisAlignment.CENTER, spacing=10, wrap=True)
+
+    def criar_card_pizza(titulo, porcentagem):
+        valor_anel = porcentagem / 100.0 
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(titulo, size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                    ft.Stack([
+                        ft.ProgressRing(value=valor_anel, stroke_width=8, color=ft.Colors.GREEN_ACCENT_400, bgcolor=ft.Colors.GREY_800, width=70, height=70),
+                        ft.Container(
+                            content=ft.Column([ft.Text(f"{int(porcentagem)}%", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT)], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                            width=70, height=70
+                        )
+                    ])
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6
+            ), bgcolor=ft.Colors.GREY_900, padding=12, border_radius=12, width=110, border=ft.Border.all(1, ft.Colors.GREY_800)
         )
-    ])
 
     def calcular_gamificacao():
         con = conectar_banco()
@@ -159,18 +167,50 @@ def main(page: ft.Page):
                     else: break
         txt_ofensiva.value = f"🔥 {streak} dias consecutivos"
 
-        # Progresso Diário (%)
+        # Progresso (%)
         cur.execute("SELECT COUNT(*) FROM tarefas_vocais")
-        total = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM checks_vocais WHERE data = %s", (data_hoje,))
-        feitos = cur.fetchone()[0]
+        total_tarefas = cur.fetchone()[0]
         
-        if total > 0:
-            pct = feitos / total
-            anel_progresso.value = pct
-            txt_porcentagem.value = f"{int(pct * 100)}%"
+        def pct_do_dia(dia_date):
+            if total_tarefas == 0: return 0.0
+            dia_str = dia_date.strftime("%Y-%m-%d")
+            cur.execute("SELECT COUNT(*) FROM checks_vocais WHERE data = %s", (dia_str,))
+            feitos = cur.fetchone()[0]
+            return (feitos / total_tarefas) * 100.0
+
+        hoje_date = obter_agora_br().date()
         
+        cur.execute("SELECT MIN(data) FROM acessos_vocais")
+        min_data_str = cur.fetchone()[0]
+        data_inicio = datetime.strptime(min_data_str, "%Y-%m-%d").date() if min_data_str else hoje_date
+
+        pct_diario = pct_do_dia(hoje_date)
+        
+        soma_semana, cont_semana = 0.0, 0
+        for d in range(7):
+            dia = hoje_date - timedelta(days=d)
+            if dia < data_inicio: break
+            soma_semana += pct_do_dia(dia)
+            cont_semana += 1
+        pct_semanal = (soma_semana / cont_semana) if cont_semana else pct_diario
+
+        soma_mes, cont_mes = 0.0, 0
+        for d in range(30):
+            dia = hoje_date - timedelta(days=d)
+            if dia < data_inicio: break
+            soma_mes += pct_do_dia(dia)
+            cont_mes += 1
+        pct_mensal = (soma_mes / cont_mes) if cont_mes else pct_diario
+
         con.close()
+        
+        linha_graficos.controls.clear()
+        linha_graficos.controls.extend([
+            criar_card_pizza("Hoje", pct_diario),
+            criar_card_pizza("Semana", pct_semanal),
+            criar_card_pizza("Mês", pct_mensal)
+        ])
+        linha_graficos.update()
         
     # -----------------------------------------------------------------------
     # ABA 1: ROTINA VOCAL
@@ -178,10 +218,10 @@ def main(page: ft.Page):
     conteudo_rotina = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20)
 
     NomesFases = {
-        1: "FASE 1: O Pocket Routine (Deitado na Cama)",
-        2: "FASE 2: O Ritual de Ignição (Sentado/Em Pé)",
-        3: "FASE 3: O Dicionário de Lapidação Fonética",
-        4: "FASE 4: O Teste de Empilhamento Máximo"
+        1: "FASE 1: O POCKET ROUTINE",
+        2: "FASE 2: O RITUAL DE IGNIÇÃO",
+        3: "FASE 3: LAPIDAÇÃO FONÈTICA",
+        4: "FASE 4: EMPILHAMENTO MÁXIMO"
     }
 
     def alternar_check(e, id_tarefa, container):
@@ -250,7 +290,6 @@ def main(page: ft.Page):
         page.update()
 
     def criar_card_tarefa(id_tarefa, nome, para_que, como_fazer, exercicio, ja_feito, fase):
-        # LARGURA FIXED EM 360 PARA EVITAR QUALQUER CORTE NO CELULAR
         container = ft.Container(
             padding=12, border_radius=12, width=360,
             bgcolor=ft.Colors.GREEN_900 if ja_feito else ft.Colors.GREY_900,
@@ -259,10 +298,11 @@ def main(page: ft.Page):
         
         chk = ft.Checkbox(value=ja_feito, fill_color=ft.Colors.GREEN_600, on_change=lambda e: alternar_check(e, id_tarefa, container))
         
-        btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
-        btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=18, on_click=lambda e: deletar_tarefa(id_tarefa))
+        # Botões com padding=0 e dimensões reduzidas para ficarem próximos e não roubarem espaço
+        btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, padding=0, width=32, height=32, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
+        btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=18, padding=0, width=32, height=32, on_click=lambda e: deletar_tarefa(id_tarefa))
         
-        # O Checkbox colado, permitindo que o titulo se expanda e os botoes fiquem no canto sem dar erro de max_width
+        # Título agora com 'expand=True' para quebrar linha se precisar, sem empurrar tudo para fora
         linha_topo = ft.Row([
             ft.Row([chk, ft.Text(nome, size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, expand=True)], spacing=0, expand=True),
             ft.Row([btn_edit, btn_del], spacing=0, tight=True)
@@ -271,13 +311,14 @@ def main(page: ft.Page):
         col_textos = ft.Column([
             linha_topo,
             ft.Container(height=4),
-            ft.Text(f"🎯 Para quê: {para_que}", size=15, color=ft.Colors.BLUE_200, italic=True) if para_que else ft.Container(),
-            ft.Container(height=10), # Espaçamento aumentado conforme solicitado!
-            ft.Text(f"🛠️ Como fazer: {como_fazer}", size=15, color=ft.Colors.GREY_400) if como_fazer else ft.Container(),
-            ft.Container(height=10),
+            # Fontes aumentadas para 16 e 17, espaços aumentados (height=14)
+            ft.Text(f"🎯 Para quê: {para_que}", size=16, color=ft.Colors.BLUE_200, italic=True) if para_que else ft.Container(),
+            ft.Container(height=14),
+            ft.Text(f"🛠️ Como fazer: {como_fazer}", size=16, color=ft.Colors.GREY_400) if como_fazer else ft.Container(),
+            ft.Container(height=14),
             ft.Container(
-                content=ft.Text(exercicio, size=16, weight=ft.FontWeight.W_500, color=ft.Colors.WHITE),
-                bgcolor=ft.Colors.BLACK45, padding=10, border_radius=8
+                content=ft.Text(exercicio, size=17, weight=ft.FontWeight.W_500, color=ft.Colors.WHITE),
+                bgcolor=ft.Colors.BLACK45, padding=12, border_radius=8
             )
         ], spacing=2)
 
@@ -328,11 +369,11 @@ def main(page: ft.Page):
     # NAVEGAÇÃO E INICIALIZAÇÃO
     # -----------------------------------------------------------------------
     conteudo_metas.controls.extend([
-        ft.Text("Seu Desempenho Hoje", size=24, weight=ft.FontWeight.BOLD),
+        ft.Text("Central de Metas", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+        ft.Container(height=10),
+        linha_graficos,
         ft.Container(height=20),
-        card_anel,
-        ft.Container(height=30),
-        ft.Text("Complete todos os exercícios da aba Treino para fechar o anel!", color=ft.Colors.GREY_400, text_align=ft.TextAlign.CENTER)
+        ft.Text("Complete todos os exercícios da aba Treino para fechar os anéis!", color=ft.Colors.WHITE, text_align=ft.TextAlign.CENTER)
     ])
 
     def aba_treino(e):
