@@ -261,8 +261,14 @@ def main(page: ft.Page):
             cur.execute("UPDATE tarefas_vocais SET nome=%s, para_que=%s, como_fazer=%s, exercicio=%s WHERE id=%s", (n, pq, cf, ex, id_tarefa))
         con.commit()
         con.close()
-        dlg.open = False
-        page.update()
+        
+        # Fecha a janela de forma compatível com a nova versão do Flet
+        if hasattr(page, "close"):
+            page.close(dlg)
+        else:
+            dlg.open = False
+            page.update()
+            
         carregar_ui_rotina()
 
     def abrir_modal_tarefa(id_tarefa, fase, n="", pq="", cf="", ex=""):
@@ -275,19 +281,28 @@ def main(page: ft.Page):
         
         dlg = ft.AlertDialog(
             title=ft.Text(titulo),
-            content=ft.Column([c_nome, c_pq, c_cf, c_ex], tight=True, scroll=ft.ScrollMode.AUTO),
-            actions=[
-                ft.TextButton("Cancelar", on_click=lambda e: fechar_dlg(dlg)),
-                ft.FilledButton("Salvar", on_click=lambda e: salvar_edicao_criacao(id_tarefa, fase, c_nome.value, c_pq.value, c_cf.value, c_ex.value, dlg), bgcolor=ft.Colors.GREEN_700)
-            ]
+            content=ft.Column([c_nome, c_pq, c_cf, c_ex], tight=True, scroll=ft.ScrollMode.AUTO)
         )
-        def fechar_dlg(d):
-            d.open = False
-            page.update()
+        
+        def fechar_dlg(e):
+            if hasattr(page, "close"):
+                page.close(dlg)
+            else:
+                dlg.open = False
+                page.update()
 
-        page.dialog = dlg
-        dlg.open = True
-        page.update()
+        dlg.actions = [
+            ft.TextButton("Cancelar", on_click=fechar_dlg),
+            ft.FilledButton("Salvar", on_click=lambda e: salvar_edicao_criacao(id_tarefa, fase, c_nome.value, c_pq.value, c_cf.value, c_ex.value, dlg), bgcolor=ft.Colors.GREEN_700)
+        ]
+        
+        # Abre a janela testando a versão do Flet para nunca falhar
+        if hasattr(page, "open"):
+            page.open(dlg)
+        else:
+            page.dialog = dlg
+            dlg.open = True
+            page.update()
 
     def criar_card_tarefa(id_tarefa, nome, para_que, como_fazer, exercicio, ja_feito, fase):
         container = ft.Container(
@@ -298,11 +313,9 @@ def main(page: ft.Page):
         
         chk = ft.Checkbox(value=ja_feito, fill_color=ft.Colors.GREEN_600, on_change=lambda e: alternar_check(e, id_tarefa, container))
         
-        # Botões com padding=0 e dimensões reduzidas para ficarem próximos e não roubarem espaço
         btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, padding=0, width=32, height=32, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
         btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=18, padding=0, width=32, height=32, on_click=lambda e: deletar_tarefa(id_tarefa))
         
-        # Título agora com 'expand=True' para quebrar linha se precisar, sem empurrar tudo para fora
         linha_topo = ft.Row([
             ft.Row([chk, ft.Text(nome, size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, expand=True)], spacing=0, expand=True),
             ft.Row([btn_edit, btn_del], spacing=0, tight=True)
@@ -311,7 +324,6 @@ def main(page: ft.Page):
         col_textos = ft.Column([
             linha_topo,
             ft.Container(height=4),
-            # Fontes aumentadas para 16 e 17, espaços aumentados (height=14)
             ft.Text(f"🎯 Para quê: {para_que}", size=16, color=ft.Colors.BLUE_200, italic=True) if para_que else ft.Container(),
             ft.Container(height=14),
             ft.Text(f"🛠️ Como fazer: {como_fazer}", size=16, color=ft.Colors.GREY_400) if como_fazer else ft.Container(),
