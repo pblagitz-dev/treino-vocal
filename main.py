@@ -69,7 +69,7 @@ def inicializar_banco():
             (1, "O Espaguete Retido (A Câmara de Eco)", "Isometria pura para manter a garganta expandida, criando espaço para a voz aveludada.", "Faça um 'biquinho'. Sugue o ar intensamente por 3 seg. Trave o ar por 5 a 10 seg, mantendo o biquinho.", "Solte o ar em um 'S' longo e suave ('Tssssss'). Repita o ciclo 5 vezes."),
             (1, "A Calha do Sulco Sagital", "Hipertrofiar o músculo transverso da língua, criar canal de ar limpo e eliminar o chiado.", "Coloque a língua para fora deixando-a pontiaguda. Tente elevar apenas as bordas laterais (formato de 'U').", "Sustente essa posição de calha por 3 a 8 segundos. Descanse e repita 5 vezes."),
             (1, "Mastigação Sonora e Salto Formântico", "Transferir a vibração para os lábios/nariz e dar um brilho aveludado na voz.", "De lábios fechados, faça o som 'Mmmmmm' contínuo enquanto mastiga exageradamente no ar. Após alguns segundos, abra a boca drasticamente para uma vogal.", "Faça: Mmmmmm... aaaaaa / eeeeee / oooooo. Duração: 3 minutos ininterruptos."),
-            (1, "A Sanfona Costal", "Aprender a respirar sem elevar os ombros, usando a expansão lateral do tronco.", "Deitado de barriga para cima, mãos nas costelas flutuantes. Inspire pelo nariz sentindo as costas empurrarem o colchão.", "Faça 5 respirações profundas focando exclusivamente na expansão lateral e nas costas."),
+            (1, "A Sanfona Costal", "Aprender a respirar sem elevating os ombros, usando a expansão lateral do tronco.", "Deitado de barriga para cima, mãos nas costelas flutuantes. Inspire pelo nariz sentindo as costas empurrarem o colchão.", "Faça 5 respirações profundas focando exclusivamente na expansão lateral e nas costas."),
             (1, "A Mão Espalmada", "Regular a pressão subglótica para poder usar um volume alto sem machucar a garganta.", "Assopre o ar contra a palma da mão (pequeno assobio). Faça som contínuo de 'a'. Após alguns seg, tire a mão e projete o som.", "Faça 5 disparos. (Assopra 3 seg -> Tira a mão e fala 'Bá!')."),
             
             # FASE 2
@@ -252,58 +252,6 @@ def main(page: ft.Page):
         con.close()
         carregar_ui_rotina()
 
-    def salvar_edicao_criacao(id_tarefa, fase, n, pq, cf, ex, dlg):
-        con = conectar_banco()
-        cur = con.cursor()
-        if id_tarefa == 0: # Nova
-            cur.execute("INSERT INTO tarefas_vocais (fase, nome, para_que, como_fazer, exercicio) VALUES (%s, %s, %s, %s, %s)", (fase, n, pq, cf, ex))
-        else: # Edição
-            cur.execute("UPDATE tarefas_vocais SET nome=%s, para_que=%s, como_fazer=%s, exercicio=%s WHERE id=%s", (n, pq, cf, ex, id_tarefa))
-        con.commit()
-        con.close()
-        
-        # Fecha a janela de forma compatível com a nova versão do Flet
-        if hasattr(page, "close"):
-            page.close(dlg)
-        else:
-            dlg.open = False
-            page.update()
-            
-        carregar_ui_rotina()
-
-    def abrir_modal_tarefa(id_tarefa, fase, n="", pq="", cf="", ex=""):
-        titulo = "Editar Tarefa" if id_tarefa > 0 else f"Nova Tarefa - Fase {fase}"
-        
-        c_nome = ft.TextField(label="Nome / Título", value=n, width=300)
-        c_pq = ft.TextField(label="Para que serve?", value=pq, multiline=True, min_lines=2, width=300)
-        c_cf = ft.TextField(label="Como fazer?", value=cf, multiline=True, min_lines=2, width=300)
-        c_ex = ft.TextField(label="Exercício / Texto", value=ex, multiline=True, min_lines=3, width=300)
-        
-        dlg = ft.AlertDialog(
-            title=ft.Text(titulo),
-            content=ft.Column([c_nome, c_pq, c_cf, c_ex], tight=True, scroll=ft.ScrollMode.AUTO)
-        )
-        
-        def fechar_dlg(e):
-            if hasattr(page, "close"):
-                page.close(dlg)
-            else:
-                dlg.open = False
-                page.update()
-
-        dlg.actions = [
-            ft.TextButton("Cancelar", on_click=fechar_dlg),
-            ft.FilledButton("Salvar", on_click=lambda e: salvar_edicao_criacao(id_tarefa, fase, c_nome.value, c_pq.value, c_cf.value, c_ex.value, dlg), bgcolor=ft.Colors.GREEN_700)
-        ]
-        
-        # Abre a janela testando a versão do Flet para nunca falhar
-        if hasattr(page, "open"):
-            page.open(dlg)
-        else:
-            page.dialog = dlg
-            dlg.open = True
-            page.update()
-
     def criar_card_tarefa(id_tarefa, nome, para_que, como_fazer, exercicio, ja_feito, fase):
         container = ft.Container(
             padding=12, border_radius=12, width=360,
@@ -311,9 +259,38 @@ def main(page: ft.Page):
             border=ft.Border.all(1, ft.Colors.GREEN_700 if ja_feito else ft.Colors.GREY_800)
         )
         
+        # --- LÓGICA DE EDIÇÃO INLINE (MÉTODO SUPER ROTINA) ---
+        def iniciar_edicao(e):
+            c_nome = ft.TextField(label="Nome / Título", value=nome, width=330, border_color=ft.Colors.BLUE_400)
+            c_pq = ft.TextField(label="Para que serve?", value=para_que, multiline=True, min_lines=1, max_lines=3, width=330, border_color=ft.Colors.BLUE_400)
+            c_cf = ft.TextField(label="Como fazer?", value=como_fazer, multiline=True, min_lines=1, max_lines=3, width=330, border_color=ft.Colors.BLUE_400)
+            c_ex = ft.TextField(label="Exercício / Texto", value=exercicio, multiline=True, min_lines=2, max_lines=5, width=330, border_color=ft.Colors.BLUE_400)
+            
+            def salvar(e):
+                con = conectar_banco()
+                cur = con.cursor()
+                cur.execute("UPDATE tarefas_vocais SET nome=%s, para_que=%s, como_fazer=%s, exercicio=%s WHERE id=%s", (c_nome.value, c_pq.value, c_cf.value, c_ex.value, id_tarefa))
+                con.commit()
+                con.close()
+                carregar_ui_rotina()
+                
+            def cancelar(e):
+                carregar_ui_rotina()
+                
+            container.content = ft.Column([
+                ft.Text("✏️ Editar Tarefa", weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200),
+                c_nome, c_pq, c_cf, c_ex,
+                ft.Row([
+                    ft.TextButton("Cancelar", on_click=cancelar, style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+                    ft.FilledButton("Salvar", on_click=salvar, bgcolor=ft.Colors.BLUE_600)
+                ], alignment=ft.MainAxisAlignment.END)
+            ], spacing=10)
+            page.update()
+        # -----------------------------------------------------
+
         chk = ft.Checkbox(value=ja_feito, fill_color=ft.Colors.GREEN_600, on_change=lambda e: alternar_check(e, id_tarefa, container))
         
-        btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, padding=0, width=32, height=32, on_click=lambda e: abrir_modal_tarefa(id_tarefa, fase, nome, para_que, como_fazer, exercicio))
+        btn_edit = ft.IconButton(icon=ft.Icons.EDIT_OUTLINED, icon_color=ft.Colors.BLUE_400, icon_size=18, padding=0, width=32, height=32, on_click=iniciar_edicao)
         btn_del = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color=ft.Colors.RED_400, icon_size=18, padding=0, width=32, height=32, on_click=lambda e: deletar_tarefa(id_tarefa))
         
         linha_topo = ft.Row([
@@ -352,7 +329,6 @@ def main(page: ft.Page):
         tarefas = cur.fetchall()
         con.close()
 
-        # Agrupa por fase
         fases_dict = {1: [], 2: [], 3: [], 4: []}
         for t in tarefas:
             fases_dict[t[1]].append(t)
@@ -365,13 +341,45 @@ def main(page: ft.Page):
                 card = criar_card_tarefa(id_tarefa, nome, pq, cf, ex, (id_tarefa in feitos), f)
                 conteudo_rotina.controls.append(card)
                 
-            # Botão de adicionar específico para o final do bloco
-            btn_add = ft.FilledButton(
-                f"+ Adicionar na Fase {fase_num}", 
-                icon=ft.Icons.ADD, bgcolor=ft.Colors.GREY_800, color=ft.Colors.WHITE, width=360,
-                on_click=lambda e, f=fase_num: abrir_modal_tarefa(0, f)
-            )
-            conteudo_rotina.controls.append(btn_add)
+            # --- LÓGICA DE ADIÇÃO INLINE ---
+            def criar_bloco_adicionar(fase_atual):
+                box = ft.Container(width=360)
+                
+                def mostrar_form(e):
+                    c_n = ft.TextField(label="Nome / Título", width=330, border_color=ft.Colors.GREEN_700)
+                    c_p = ft.TextField(label="Para que serve?", multiline=True, min_lines=1, max_lines=3, width=330, border_color=ft.Colors.GREEN_700)
+                    c_c = ft.TextField(label="Como fazer?", multiline=True, min_lines=1, max_lines=3, width=330, border_color=ft.Colors.GREEN_700)
+                    c_e = ft.TextField(label="Exercício / Texto", multiline=True, min_lines=2, max_lines=5, width=330, border_color=ft.Colors.GREEN_700)
+                    
+                    def salvar_novo(e):
+                        con = conectar_banco()
+                        cur = con.cursor()
+                        cur.execute("INSERT INTO tarefas_vocais (fase, nome, para_que, como_fazer, exercicio) VALUES (%s, %s, %s, %s, %s)", (fase_atual, c_n.value, c_p.value, c_c.value, c_e.value))
+                        con.commit()
+                        con.close()
+                        carregar_ui_rotina()
+                        
+                    def cancelar_novo(e):
+                        carregar_ui_rotina()
+                        
+                    box.content = ft.Container(
+                        padding=12, border_radius=12, width=360, bgcolor=ft.Colors.GREY_900, border=ft.Border.all(1, ft.Colors.GREEN_700),
+                        content=ft.Column([
+                            ft.Text(f"✨ Nova Tarefa - Fase {fase_atual}", weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_ACCENT),
+                            c_n, c_p, c_c, c_e,
+                            ft.Row([
+                                ft.TextButton("Cancelar", on_click=cancelar_novo, style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+                                ft.FilledButton("Salvar", on_click=salvar_novo, bgcolor=ft.Colors.GREEN_700)
+                            ], alignment=ft.MainAxisAlignment.END)
+                        ], spacing=10)
+                    )
+                    page.update()
+                
+                box.content = ft.FilledButton(f"+ Adicionar na Fase {fase_atual}", icon=ft.Icons.ADD, bgcolor=ft.Colors.GREY_800, color=ft.Colors.WHITE, width=360, on_click=mostrar_form)
+                return box
+            # -------------------------------
+            
+            conteudo_rotina.controls.append(criar_bloco_adicionar(fase_num))
             conteudo_rotina.controls.append(ft.Divider(height=25, thickness=2, color=ft.Colors.GREY_800))
             
         calcular_gamificacao()
